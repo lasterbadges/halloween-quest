@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Тайный квест</title>
+<style>
+:root{--bg:#111820;--panel:#202b36;--panel2:#17212b;--line:#394958;--orange:#ff8a24;--text:#f5f7fa;--muted:#b5c1cc;--green:#70dfa1;--red:#ff9b82}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(145deg,#1b2a36 0%,#111820 58%,#151d27 100%);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh;display:flex;justify-content:center;padding:28px 16px}
+main{width:min(680px,100%)}
+header{display:flex;align-items:center;gap:14px;margin:4px 0 22px}
+.mark{width:48px;height:48px;flex:0 0 48px;border:2px solid var(--orange);border-radius:14px;display:grid;place-items:center;color:var(--orange);font-size:25px;background:#26313a}
+h1{font-size:20px;letter-spacing:.04em;margin:0;font-weight:800}
+.sub{color:var(--muted);font-size:14px;margin-top:3px}
+.card{background:linear-gradient(160deg,#25313c,#202a34);border:1px solid #3c4b59;border-radius:20px;padding:clamp(20px,4vw,30px);box-shadow:0 16px 44px #0003;margin:12px 0}
+.tag{display:inline-flex;align-items:center;color:var(--orange);background:#ff8a2417;border:1px solid #ff8a2445;border-radius:999px;padding:5px 11px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+h2{font-size:clamp(24px,4vw,30px);line-height:1.2;margin:13px 0 12px;letter-spacing:-.02em}
+p{line-height:1.6;margin:10px 0}
+.muted{color:var(--muted)}
+button,input{font:inherit}
+button{border:1px solid #536373;background:#34424f;color:var(--text);padding:12px 16px;border-radius:12px;cursor:pointer;transition:background .15s,border-color .15s,transform .15s;min-height:46px}
+button:hover:not(:disabled){border-color:var(--orange);background:#3b4a57;transform:translateY(-1px)}
+button:focus-visible{outline:3px solid #ff8a2488;outline-offset:2px}
+button.primary{background:var(--orange);border-color:var(--orange);color:#18212a;font-weight:800}
+button.primary:hover:not(:disabled){background:#ffa044}
+button:disabled{opacity:.55;cursor:default;transform:none}
+.choices{display:grid;grid-template-columns:1fr;gap:10px;margin-top:18px}
+.choices button{text-align:left}
+.status{margin-top:18px;padding:14px 16px;border-radius:12px;background:#151e27;border:1px solid #344351;color:var(--muted);min-height:50px}
+.good{color:var(--green);border-color:#70dfa14d}
+.bad{color:var(--red);border-color:#ff9b8245}
+input[type=text]{width:100%;background:#151e27;color:var(--text);border:1px solid #536373;border-radius:12px;padding:13px;margin:8px 0 12px}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:18px 0}
+.tile{min-height:64px;padding:8px;font-size:21px;text-align:center;font-weight:750}
+.tile.empty{opacity:.55}
+.wires{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
+.wires>div{display:grid;gap:9px;align-content:start}
+.wires button{text-align:left}
+.mini-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:18px 0}
+.mini-grid button{min-height:66px;font-size:23px;font-weight:750}
+.foot{font-size:12px;color:#a8b5c0;text-align:center;margin:20px 0}
+@media(max-width:480px){body{padding:16px 12px}.card{padding:18px;border-radius:16px}header{margin-bottom:16px}.wires{gap:9px}.wires button{padding:10px 8px;font-size:14px}.mini-grid{gap:7px}.mini-grid button{min-height:58px}}
+</style></head>
+<body><main>
+<header><div class="mark">✦</div><div><h1>ТАЙНЫЙ КВЕСТ</h1><div class="sub">Мини-игра · Выполни задание, чтобы открыть результат</div></div></header>
+<section class="card" id="app"><div class="tag" id="number">QR-КОД</div><h2 id="title">Загрузка задания…</h2><div id="game"></div><div id="status" class="status" aria-live="polite">Подготовься к заданию.</div></section>
+<div class="foot">Играй честно. Не ищи подсказки в опасных местах.</div>
+</main>
+<script>
+const params=new URLSearchParams(location.search);let id=30;
+const data=[
+['Соедини провода','Провода должны соединить одинаковые цвета.','wires'],
+['Пятнашки','Передвинь плитки, чтобы числа шли по порядку.','sliding'],
+['Память','Найди все пары одинаковых символов.','memory'],
+['Кодовый замок','Вычисли код по подсказке.','code'],
+['Лабиринт','Выбери правильный путь к выходу.','maze'],
+['Лишний символ','Найди символ, который отличается.','odd'],
+['Быстрая реакция','Нажми на цель, когда она появится.','reaction'],
+['Повтори порядок','Запомни последовательность и повтори её.','sequence'],
+['Собери картинку','Поставь части в правильном порядке.','order'],
+['Логическая загадка','Выбери правильный ответ.','quiz'],
+['Счёт на время','Реши короткий пример.','math'],
+['Найди пару','Соедини предметы, которые подходят друг другу.','match'],
+['Секретное слово','Расшифруй простое слово.','word'],
+['Верный маршрут','Выбери дорогу к выходу.','path'],
+['Сортировка','Расставь числа от меньшего к большему.','sort'],
+['Символы памяти','Запомни символы и ответь на вопрос.','memory2'],
+['Что изменилось?','Найди правильный вариант.','quiz2'],
+['Последний переключатель','Выбери нужный переключатель.','switch'],
+['Тайный код','Реши загадку с числами.','code2'],
+['Три двери','Выбери дверь, за которой выход.','doors'],
+['Поймай знак','Нажми на нужный символ.','tap'],
+['Угадай число','Выбери число по подсказке.','number'],
+['Собери последовательность','Найди продолжение ряда.','sequence2'],
+['Тихий сигнал','Повтори короткую последовательность.','sequence3'],
+['Найди ошибку','Выбери вариант без ошибки.','error'],
+['Маленькая загадка','Разгадай простую загадку.','riddle'],
+['Пары предметов','Найди совпадения.','memory3'],
+['Правильный порядок','Расположи этапы в правильном порядке.','order2'],
+['Проверка внимательности','Ответь на вопрос по условию.','attention'],
+['Финальная проверка','Реши последнюю головоломку.','final']
+];
+const $=x=>document.getElementById(x), game=$('game'), status=$('status');
+$('number').textContent='СЕКРЕТНОЕ ЗАДАНИЕ';$('title').textContent=data[id-1][0];
+function say(t,ok=false){status.innerHTML=t;status.className='status '+(ok?'good':'bad')}
+function finish(){if(id<=12){say('ЗАДАНИЕ ВЫПОЛНЕНО!<br><br>У тебя есть подсказка к закладке с жизнью. Сейчас здесь появится твоя подсказка или фотография — её можно добавить в настройках проекта.',true)}else{const jokes=['Поздравляем! Ты нашёл ничего. Очень редкий навык.','Это был фальшивый QR-код. Но зато ты старался.','Награда загружается… Шутка. Никакой награды нет.','Ты потратил время. Организатор доволен.','Сокровище было внутри тебя. Оставь его там.','Удача почти рядом. Но не сегодня.'];say('ФАЛЬШИВЫЙ КОД<br><br>'+jokes[(id-13)%jokes.length])} }
+function buttons(items,correct,success='Верно!'){game.innerHTML='<div class="choices">'+items.map((x,i)=>`<button data-i="${i}">${x}</button>`).join('')+'</div>';game.querySelectorAll('button').forEach(b=>b.onclick=()=>{if(Number(b.dataset.i)===correct){say(success,true);game.querySelectorAll('button').forEach(x=>x.disabled=true);const n=document.createElement('button');n.className='primary';n.textContent='Получить результат';n.onclick=finish;game.append(n)}else say('Не совсем. Попробуй ещё раз.')})}
+function inputGame(prompt,answers){game.innerHTML=`<p>${prompt}</p><input id="answer" type="text" placeholder="Твой ответ"><button class="primary" id="check">Проверить</button>`;$('check').onclick=()=>{let a=$('answer').value.trim().toLowerCase();if(answers.includes(a)){say('Правильно!',true);let b=document.createElement('button');b.className='primary';b.textContent='Получить результат';b.onclick=finish;game.append(b)}else say('Неверно. Попробуй ещё раз.')}} 
+switch(data[id-1][2]){
+case'wires':game.innerHTML='<p>Нажми на цвет слева, затем на такой же справа.</p><div class="wires"><div>'+['🟠 Оранжевый','🟢 Зелёный','🔵 Синий'].map((x,i)=>`<button data-left="${i}">${x}</button>`).join('')+'</div><div>'+['🔵 Синий','🟠 Оранжевый','🟢 Зелёный'].map((x,i)=>`<button data-right="${i}">${x}</button>`).join('')+'</div></div>';let left=null,done=new Set();game.querySelectorAll('[data-left]').forEach(b=>b.onclick=()=>{left=Number(b.dataset.left);say('Теперь выбери провод того же цвета.')});game.querySelectorAll('[data-right]').forEach(b=>b.onclick=()=>{let r=Number(b.dataset.right);if(left===null)return say('Сначала выбери провод слева.');let match=[2,0,1][r];if(match===left){done.add(left);b.disabled=true;game.querySelector(`[data-left="${left}"]`).disabled=true;say('Соединение готово: '+done.size+'/3',true);if(done.size===3){let n=document.createElement('button');n.className='primary';n.textContent='Получить результат';n.onclick=finish;game.append(n)}}else say('Пока не получилось — выбери провод того же цвета.');left=null});break;
+case'sliding':{let nums=[1,2,3,4,5,6,7,0,8];game.innerHTML='<p>Собери числа по порядку. Нажимай на плитку рядом с пустой клеткой.</p><div class="tiles" id="tiles"></div>';function draw(){ $('tiles').innerHTML=nums.map((n,i)=>`<button class="tile ${n===0?'empty':''}" data-i="${i}">${n||'·'}</button>`).join('');$('tiles').querySelectorAll('button').forEach(b=>b.onclick=()=>{let i=+b.dataset.i,z=nums.indexOf(0);if([z-3,z+3,...(z%3?[z-1]:[]),...(z%3<2?[z+1]:[])].includes(i)){[nums[z],nums[i]]=[nums[i],nums[z]];draw();if(nums.join(',')==='1,2,3,4,5,6,7,8,0'){say('Отлично! Плитки на месте.',true);let n=document.createElement('button');n.className='primary';n.textContent='Получить результат';n.onclick=finish;game.append(n)}}})}draw();break}
+case'memory':case'memory2':case'memory3':{let vals=['☾','☾','✦','✦','♧','♧','◆','◆'];vals.sort(()=>Math.random()-.5);let open=[],matched=new Set();game.innerHTML='<p>Открой все одинаковые пары.</p><div class="mini-grid" id="mem"></div>';function draw(){ $('mem').innerHTML=vals.map((v,i)=>`<button data-i="${i}">${matched.has(i)||open.includes(i)?v:'?'}</button>`).join('');$('mem').querySelectorAll('button').forEach(b=>b.onclick=()=>{let i=+b.dataset.i;if(matched.has(i)||open.includes(i)||open.length===2)return;open.push(i);draw();if(open.length===2){if(vals[open[0]]===vals[open[1]]){open.forEach(x=>matched.add(x));open=[];draw();if(matched.size===vals.length){say('Все пары найдены!',true);let n=document.createElement('button');n.className='primary';n.textContent='Получить результат';n.onclick=finish;game.append(n)}}else setTimeout(()=>{open=[];draw()},600)}})}draw();break}
+case'code':inputGame('В коде три цифры: 2, 4 и 6. Сложи их. Какой получится ответ?',['12']);break;
+case'math':inputGame('Сколько будет 7 + 5?',['12','двенадцать']);break;
+case'word':inputGame('Какое слово получится из букв «ЬЛОСТ»? (подсказка: мебель)',['стол']);break;
+case'number':buttons(['3','7','9','12'],1,'Да, число найдено!');break;
+case'odd':buttons(['●','●','■','●'],2,'Ты заметил отличие!');break;
+case'order':case'order2':buttons(['1 → 2 → 3','3 → 1 → 2','2 → 3 → 1'],0);break;
+case'path':case'maze':buttons(['Лево','Прямо','Право'],1,'Путь найден!');break;
+case'sort':buttons(['1, 2, 3','3, 2, 1','2, 1, 3'],0);break;
+case'switch':buttons(['Включить 1','Включить 2','Включить 3'],1);break;
+case'doors':buttons(['Дверь A','Дверь B','Дверь C'],2,'Выход найден!');break;
+case'tap':case'reaction':buttons(['Нажать на ✦','Нажать на ●','Нажать на ▲'],0);break;
+case'sequence':case'sequence2':case'sequence3':buttons(['🔴 🔵 🔴 🔵 🔴','🔴 🔴 🔵 🔵','🔵 🔴 🔵 🔴'],0);break;
+case'quiz':buttons(['Часы','Книга','Стул'],0,'Верно!');break;
+case'quiz2':buttons(['Два одинаковых символа','Один лишний символ','Все разные'],1);break;
+case'code2':inputGame('Продолжи ряд: 2, 4, 6, 8, …',['10','десять']);break;
+case'match':buttons(['Ключ — замок','Луна — ботинок','Книга — ложка'],0);break;
+case'error':buttons(['2 + 2 = 4','3 + 4 = 8','5 + 1 = 6'],0);break;
+case'riddle':inputGame('Что имеет стрелки, но не умеет стрелять?',['часы','часики']);break;
+case'attention':buttons(['Прочитай вопрос внимательно','Нажми второй вариант','Нажми первый вариант'],0);break;
+case'final':buttons(['Проверить систему','Отключить всё','Уйти'],0);break;
+default:buttons(['Вариант A','Вариант B','Вариант C'],0,'Задание выполнено!');}
+</script></body></html>
